@@ -47,7 +47,7 @@ def generate_minhash_signatures(user_movies, num_hashes = 128):
             signature.append(min_hash)
         return signature
 
-    # Step 3: Apply MinHash to the DataFrame
+
     minhash_udf = udf(minhash_movie_set, ArrayType(IntegerType()))
     user_signatures = user_movies.withColumn("minhashSignature", minhash_udf("movieSet"))
 
@@ -56,27 +56,25 @@ def generate_minhash_signatures(user_movies, num_hashes = 128):
 
 # --- Step 4: Apply LSH Bucketing ---
 def apply_lsh(signatures):
-    # Placeholder - we will fill this next
     pass
 
 # --- Step 5: Find Top 100 Most Similar Pairs ---
 def find_top_100_pairs(candidates):
-    # Placeholder - we will fill this next
     pass
 
-# --- Main Runner ---
+
+
 def main():
-    # Adjust for small dataset path first
+    # Adjust this when it's time
     ratings_path = "hdfs:///user/ml9542_nyu_edu/ml-latest-small/ratings.csv"
     
     spark = start_spark()
     ratings = load_ratings(spark, ratings_path)
     user_movies = build_user_movie_sets(ratings)
 
-    # === New step: generate minhash signatures ===
+    
     user_signatures = generate_minhash_signatures(user_movies)
 
-    # === Show results ===
     user_signatures.select("userId", "movieSet", "minhashSignature").show(5, truncate=False)
     spark.stop()
 
