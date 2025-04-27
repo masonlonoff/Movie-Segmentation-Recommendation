@@ -1,9 +1,9 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import collect_set
 import random   
-from pyspark.sql.functions import udf
-from pyspark.sql.types import ArrayType, IntegerType
-
+from pyspark.sql.types import ArrayType, IntegerType, StructType, StructField
+from pyspark.sql.functions import collect_set, collect_list, col, explode, udf
+from pyspark.sql.utils import AnalysisException
+import os
 
 
 # --- Step 0: Initialize Spark ---
@@ -12,9 +12,19 @@ def start_spark():
     return spark
 
 # --- Step 1: Load Ratings Data ---
-def load_ratings(spark, path):
-    ratings = spark.read.csv(path, header=True, inferSchema=True)
-    ratings = ratings.select("userId", "movieId").dropna()
+
+
+def load_ratings(spark, parquet_path, csv_path):
+    # Try to read Parquet first
+    try:
+        ratings = spark.read.parquet(parquet_path)
+        print("Successfully loaded from Parquet file.")
+    except Exception as e:
+        print("Parquet file not found. Reading from CSV and converting to Parquet...")
+        ratings = spark.read.csv(csv_path, header=True, inferSchema=True)
+        ratings = ratings.select("userId", "movieId").dropna()
+        ratings.write.mode("overwrite").parquet(parquet_path)
+        print("Parquet file created successfully.")
     return ratings
 
 # --- Step 2: Build User Movie Sets ---
@@ -23,7 +33,7 @@ def build_user_movie_sets(ratings):
     return user_movies
 
 # --- Step 3: Generate MinHash Signatures ---
-def generate_minhash_signatures(user_movies, num_hashes = 128):
+def generate_minhash_signatures(user_movies, num_hashes = 64):
 
     def create_hash_functions(num_hashes, max_val = 100000, prime = 104729):
         hash_functions = []
@@ -55,8 +65,44 @@ def generate_minhash_signatures(user_movies, num_hashes = 128):
    
 
 # --- Step 4: Apply LSH Bucketing ---
-def apply_lsh(signatures):
-    pass
+def apply_lsh(user_signatures, num_bands=16, rows_per_band=4):
+    # Step 1: Split MinHash signatures into bands
+    def split_into_bands(signature):
+        bands = []
+        for band_idx in range(num_bands):
+            start = band_idx * rows_per_band
+            end = start + rows_per_band
+            band = signature[start:end]
+            bands.append((band_idx, tuple(band)))  # Save (band number, band values)
+        return bands
+
+    # Define the UDF to split signatures into bands
+    split_udf = udf(split_into_bands, ArrayType(StructType([
+        StructField("band_idx", IntegerType()),
+        StructField("band", ArrayType(IntegerType()))
+    ])))
+
+    # Apply UDF to create bands column
+    bands_df = user_signatures.withColumn("bands", split_udf(col("minhashSignature")))
+
+    # Step 2: Explode the bands so we get one row per (user, band)
+    exploded_bands = bands_df.select(
+        col("userId"),
+        explode(col("bands")).alias("band_info")
+    ).select(
+        col("userId"),
+        col("band_info.band_idx").alias("band_idx"),
+        col("band_info.band").alias("band")
+    )
+
+    # Step 3: Group users by (band_idx, band)
+    grouped_bands = exploded_bands.groupBy("band_idx", "band").agg(
+        collect_list("userId").alias("candidate_users")
+    )
+
+    return grouped_bands
+
+
 
 # --- Step 5: Find Top 100 Most Similar Pairs ---
 def find_top_100_pairs(candidates):
@@ -65,17 +111,30 @@ def find_top_100_pairs(candidates):
 
 
 def main():
-    # Adjust this when it's time
-    ratings_path = "hdfs:///user/ml9542_nyu_edu/ml-latest-small/ratings.csv"
+    # --- Paths ---
+    parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.parquet"
+    csv_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.csv"
     
+    # --- Start Spark ---
     spark = start_spark()
-    ratings = load_ratings(spark, ratings_path)
-    user_movies = build_user_movie_sets(ratings)
 
+    # --- Load Data (optimized) ---
+    ratings = load_ratings(spark, parquet_path, csv_path)
     
+    # --- Build movie sets ---
+    user_movies = build_user_movie_sets(ratings)
+    
+    # --- Generate MinHash signatures ---
     user_signatures = generate_minhash_signatures(user_movies)
-
     user_signatures.select("userId", "movieSet", "minhashSignature").show(5, truncate=False)
+    
+    # --- Apply LSH bucketing ---
+    grouped_bands = apply_lsh(user_signatures)
+    print("Number of bands created:", grouped_bands.count())
+
+    grouped_bands.show(25, truncate=False)
+
+    # --- Stop Spark ---
     spark.stop()
 
 if __name__ == "__main__":
