@@ -1,9 +1,12 @@
 from pyspark.sql import SparkSession
 import random   
 from pyspark.sql.types import ArrayType, IntegerType, StructType, StructField
-from pyspark.sql.functions import collect_set, collect_list, col, explode, udf
+from pyspark.sql.functions import collect_set, collect_list, col, explode, udf, array_intersect, size
 from pyspark.sql.utils import AnalysisException
 import os
+import random 
+
+random.seed(11)
 
 
 # --- Step 0: Initialize Spark ---
@@ -105,15 +108,45 @@ def apply_lsh(user_signatures, num_bands=16, rows_per_band=4):
 
 
 # --- Step 5: Find Top 100 Most Similar Pairs ---
-def find_top_100_pairs(candidates):
-    pass
+def find_top_100_pairs(grouped_bands):
+    # Step 1: Filter bands with more than 1 user (collisions only)
+    filtered_bands = grouped_bands.filter(size(col("candidate_users")) > 1)
+
+    # Step 2: Create all unique user pairs from candidate_users
+    def create_user_pairs(users):
+        users = sorted(users)
+        pairs = []
+        for i in range(len(users)):
+            for j in range(i + 1, len(users)):
+                pairs.append((users[i], users[j]))
+        return pairs
+
+    create_pairs_udf = udf(create_user_pairs, ArrayType(StructType([
+        StructField("user1", IntegerType()),
+        StructField("user2", IntegerType())
+    ])))
+
+    # Step 3: Explode into (user1, user2) rows
+    exploded_pairs = filtered_bands.withColumn("user_pairs", explode(create_pairs_udf(col("candidate_users")))) \
+                                   .select(
+                                       col("user_pairs.user1").alias("user1"),
+                                       col("user_pairs.user2").alias("user2")
+                                   )
+
+    # Step 4: Group by user pairs and count number of collisions
+    pair_counts = exploded_pairs.groupBy("user1", "user2").count()
+
+    # Step 5: Order by count descending and take top 100
+    top_100_pairs = pair_counts.orderBy(col("count").desc()).limit(100)
+
+    return top_100_pairs    
 
 
 
 def main():
     # --- Paths ---
-    parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.parquet"
-    csv_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.csv"
+    parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest-small/ratings.parquet"
+    csv_path = "hdfs:///user/ml9542_nyu_edu/ml-latest-small/ratings.csv"
     
     # --- Start Spark ---
     spark = start_spark()
@@ -133,6 +166,30 @@ def main():
     print("Number of bands created:", grouped_bands.count())
 
     grouped_bands.show(25, truncate=False)
+
+    from pyspark.sql.functions import size
+
+# Add a group_size column
+    grouped_bands_with_size = grouped_bands.withColumn("group_size", size(col("candidate_users")))
+
+# Show basic stats
+    grouped_bands_with_size.select("group_size").summary().show()
+
+# How many bands have more than 1 candidate user
+    print("Number of bands with >1 candidate:", grouped_bands_with_size.filter(col("group_size") > 1).count())
+
+# Maximum group size
+    grouped_bands_with_size.selectExpr("max(group_size)").show()
+
+
+
+     # --- Find Top 100 most similar user pairs ---
+    top_100_pairs = find_top_100_pairs(grouped_bands)
+    print("Top 100 most similar user pairs based on band collisions:")
+    top_100_pairs.show(25, truncate=False)
+    
+    top_100_pairs.write.csv("top_100_pairs.csv", header=True, mode="overwrite")
+
 
     # --- Stop Spark ---
     spark.stop()
