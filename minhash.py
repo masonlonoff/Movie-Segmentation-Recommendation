@@ -76,7 +76,7 @@ def apply_lsh(user_signatures, num_bands=16, rows_per_band=4):
             start = band_idx * rows_per_band
             end = start + rows_per_band
             band = signature[start:end]
-            bands.append((band_idx, tuple(band)))  # Save (band number, band values)
+            bands.append((band_idx, tuple(band)))
         return bands
 
     # Define the UDF to split signatures into bands
