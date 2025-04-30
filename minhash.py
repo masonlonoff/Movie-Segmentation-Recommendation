@@ -5,6 +5,7 @@ from pyspark.sql.functions import collect_set, collect_list, col, explode, udf, 
 from pyspark.sql.utils import AnalysisException
 import os
 import random 
+import numpy as np
 
 random.seed(11)
 
@@ -36,16 +37,16 @@ def build_user_movie_sets(ratings):
     return user_movies
 
 # --- Step 3: Generate MinHash Signatures ---
-def generate_minhash_signatures(user_movies, num_hashes = 64):
+def generate_minhash_signatures(user_movies, num_hashes = 128):
 
-    def create_hash_functions(num_hashes, max_val = 100000, prime = 104729):
+    def create_hash_functions(num_hashes, max_val=100000, prime=104729):
         hash_functions = []
         for _ in range(num_hashes):
             a = random.randint(1, max_val)
             b = random.randint(0, max_val)
 
-            def hash_fn(x, a=a, b=b, prime = prime):
-                return (a*x + b) % prime
+            def hash_fn(x, a=a, b=b, prime=prime):
+                return (a * x + b) % prime
 
             hash_functions.append(hash_fn)
 
@@ -68,7 +69,7 @@ def generate_minhash_signatures(user_movies, num_hashes = 64):
    
 
 # --- Step 4: Apply LSH Bucketing ---
-def apply_lsh(user_signatures, num_bands=16, rows_per_band=4):
+def apply_lsh(user_signatures, num_bands=16, rows_per_band=8):
     # Step 1: Split MinHash signatures into bands
     def split_into_bands(signature):
         bands = []
@@ -145,8 +146,8 @@ def find_top_100_pairs(grouped_bands):
 
 def main():
     # --- Paths ---
-    parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest-small/ratings.parquet"
-    csv_path = "hdfs:///user/ml9542_nyu_edu/ml-latest-small/ratings.csv"
+    parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.parquet"
+    csv_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.csv"
     
     # --- Start Spark ---
     spark = start_spark()
@@ -182,13 +183,10 @@ def main():
     grouped_bands_with_size.selectExpr("max(group_size)").show()
 
 
-
      # --- Find Top 100 most similar user pairs ---
     top_100_pairs = find_top_100_pairs(grouped_bands)
-    print("Top 100 most similar user pairs based on band collisions:")
-    top_100_pairs.show(25, truncate=False)
     
-    top_100_pairs.write.csv("top_100_pairs.csv", header=True, mode="overwrite")
+    top_100_pairs.write.parquet("top_100_pairs_large-3.parquet", mode="overwrite")
 
 
     # --- Stop Spark ---
