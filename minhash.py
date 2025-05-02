@@ -2,12 +2,11 @@ from pyspark.sql import SparkSession
 import random   
 from pyspark.sql.types import ArrayType, IntegerType, StructType, StructField
 from pyspark.sql.functions import collect_set, collect_list, col, explode, udf, array_intersect, size
-from pyspark.sql.utils import AnalysisException
-import os
-import random 
+from pyspark.sql.types import ArrayType, IntegerType
 import numpy as np
 
-random.seed(11)
+
+#random.seed(11)
 
 
 # --- Step 0: Initialize Spark ---
@@ -37,39 +36,32 @@ def build_user_movie_sets(ratings):
     return user_movies
 
 # --- Step 3: Generate MinHash Signatures ---
-def generate_minhash_signatures(user_movies, num_hashes = 128):
+def generate_minhash_signatures(user_movies, num_hashes=128):
+    np.random.seed(11)
 
-    def create_hash_functions(num_hashes, max_val=100000, prime=104729):
-        hash_functions = []
-        for _ in range(num_hashes):
-            a = random.randint(1, max_val)
-            b = random.randint(0, max_val)
+    # Use large prime and coefficient range
+    prime = 10**9 + 7
+    max_val = prime - 1
 
-            def hash_fn(x, a=a, b=b, prime=prime):
-                return (a * x + b) % prime
+    a_vals = np.random.randint(1, max_val, size=num_hashes).tolist()
+    b_vals = np.random.randint(0, max_val, size=num_hashes).tolist()
 
-            hash_functions.append(hash_fn)
+    def make_minhash_udf(a_vals, b_vals, prime):
+        def minhash_movie_set(movie_set):
+            if movie_set is None or len(movie_set) == 0:
+                return [prime] * num_hashes
+            signature = []
+            for i in range(num_hashes):
+                min_hash = min([(a_vals[i] * m + b_vals[i]) % prime for m in movie_set])
+                signature.append(min_hash)
+            return signature
+        return udf(minhash_movie_set, ArrayType(IntegerType()))
 
-        return hash_functions
-
-    hash_funcs = create_hash_functions(num_hashes)
-
-    def minhash_movie_set(movie_set):
-        signature = []
-        for h in hash_funcs:
-            min_hash = min([h(m) for m in movie_set])
-            signature.append(min_hash)
-        return signature
-
-
-    minhash_udf = udf(minhash_movie_set, ArrayType(IntegerType()))
+    minhash_udf = make_minhash_udf(a_vals, b_vals, prime)
     user_signatures = user_movies.withColumn("minhashSignature", minhash_udf("movieSet"))
 
     return user_signatures
-   
-
-# --- Step 4: Apply LSH Bucketing ---
-def apply_lsh(user_signatures, num_bands=16, rows_per_band=8):
+def apply_lsh(user_signatures, num_bands=32, rows_per_band=4):
     # Step 1: Split MinHash signatures into bands
     def split_into_bands(signature):
         bands = []
@@ -144,53 +136,86 @@ def find_top_100_pairs(grouped_bands):
 
 
 
+from pyspark.sql import Row
+from pyspark.sql.functions import col, size, explode
+
 def main():
     # --- Paths ---
     parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.parquet"
     csv_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.csv"
-    
+
     # --- Start Spark ---
     spark = start_spark()
 
-    # --- Load Data (optimized) ---
+    # --- Load Ratings ---
     ratings = load_ratings(spark, parquet_path, csv_path)
-    
-    # --- Build movie sets ---
-    user_movies = build_user_movie_sets(ratings)
-    
-    # --- Generate MinHash signatures ---
+
+    # --- Build User Movie Sets ---
+    user_movies_full = build_user_movie_sets(ratings)
+
+    # --- Diagnostics BEFORE filtering ---
+    print("=== Full Dataset Diagnostics ===")
+    user_signatures_full = generate_minhash_signatures(user_movies_full)
+    print("Number of users (full):", user_signatures_full.count())
+    print("Unique MinHash signatures (full):", user_signatures_full.select("minhashSignature").distinct().count())
+    user_signatures_full.groupBy("minhashSignature").count().orderBy(col("count").desc()).show(10)
+    user_signatures_full.select(size("movieSet").alias("numMovies")).summary().show()
+
+    # --- FILTER users with <5 movies ---
+    user_movies = user_movies_full.filter(size(col("movieSet")) >= 3)
+    print("Number of users after filtering (movieSet size ≥ 3):", user_movies.count())
+
+    # --- Generate filtered MinHash signatures ---
     user_signatures = generate_minhash_signatures(user_movies)
+
+    # --- Diagnostics AFTER filtering ---
+    print("Unique MinHash signatures (filtered):", user_signatures.select("minhashSignature").distinct().count())
+    user_signatures.groupBy("minhashSignature").count().orderBy(col("count").desc()).show(10)
+    user_signatures.select(size("movieSet").alias("numMovies")).summary().show()
     user_signatures.select("userId", "movieSet", "minhashSignature").show(5, truncate=False)
-    
-    # --- Apply LSH bucketing ---
+
+    # --- Cluster Inspection: Top MinHash Signature ---
+    top_sig = user_signatures.groupBy("minhashSignature") \
+        .count() \
+        .orderBy(col("count").desc()) \
+        .limit(1) \
+        .collect()[0]["minhashSignature"]
+
+    sig_df = spark.createDataFrame([Row(minhashSignature=top_sig)])
+    matching_users = user_signatures.join(sig_df, on="minhashSignature", how="inner")
+
+  #  print("=== Users with Most Frequent MinHash Signature ===")
+ #   matching_users.select("userId", "movieSet").show(20, truncate=False)
+
+    # Explode movie sets into individual movieIds
+    exploded_movies = matching_users.select(explode(col("movieSet")).alias("movieId"))
+
+  #  print("=== Unique Movies Rated by This Cluster ===")
+  #  exploded_movies.distinct().orderBy("movieId").show(100, truncate=False)
+
+ #   print("=== Most Frequently Rated Movies in the Cluster ===")
+  #  exploded_movies.groupBy("movieId").count().orderBy(col("count").desc()).show(20)
+
+    # --- Apply LSH ---
     grouped_bands = apply_lsh(user_signatures)
-    print("Number of bands created:", grouped_bands.count())
-
-    grouped_bands.show(25, truncate=False)
-
-    from pyspark.sql.functions import size
-
-# Add a group_size column
+    print("Number of band buckets:", grouped_bands.count())
     grouped_bands_with_size = grouped_bands.withColumn("group_size", size(col("candidate_users")))
-
-# Show basic stats
     grouped_bands_with_size.select("group_size").summary().show()
-
-# How many bands have more than 1 candidate user
-    print("Number of bands with >1 candidate:", grouped_bands_with_size.filter(col("group_size") > 1).count())
-
-# Maximum group size
+    print("Number of buckets with >1 user:", grouped_bands_with_size.filter(col("group_size") > 1).count())
     grouped_bands_with_size.selectExpr("max(group_size)").show()
 
-
-     # --- Find Top 100 most similar user pairs ---
+    # --- Find Top 100 pairs ---
     top_100_pairs = find_top_100_pairs(grouped_bands)
-    
-    top_100_pairs.write.parquet("top_100_pairs_large-3.parquet", mode="overwrite")
+   # print("Top 100 user pairs by band collision count:")
+   # top_100_pairs.show(100, truncate=False)
 
+    # --- Save result ---
+    print("saving to parquet")
+    top_100_pairs.write.parquet("top_100_pairs_large-final.parquet", mode="overwrite")
 
     # --- Stop Spark ---
     spark.stop()
+
 
 if __name__ == "__main__":
     main()
