@@ -1,9 +1,10 @@
 from pyspark.sql import SparkSession
 import random   
 from pyspark.sql.types import ArrayType, IntegerType, StructType, StructField
-from pyspark.sql.functions import collect_set, collect_list, col, explode, udf, array_intersect, size
+from pyspark.sql.functions import collect_set, collect_list, col, explode, udf, array_intersect, size, array_intersect, array_union
 from pyspark.sql.types import ArrayType, IntegerType
 import numpy as np
+from pyspark.sql import Row
 
 
 #random.seed(11)
@@ -136,9 +137,6 @@ def find_top_100_pairs(grouped_bands):
 
 
 
-from pyspark.sql import Row
-from pyspark.sql.functions import col, size, explode
-
 def main():
     # --- Paths ---
     parquet_path = "hdfs:///user/ml9542_nyu_edu/ml-latest/ratings.parquet"
@@ -154,12 +152,12 @@ def main():
     user_movies_full = build_user_movie_sets(ratings)
 
     # --- Diagnostics BEFORE filtering ---
-    print("=== Full Dataset Diagnostics ===")
-    user_signatures_full = generate_minhash_signatures(user_movies_full)
-    print("Number of users (full):", user_signatures_full.count())
-    print("Unique MinHash signatures (full):", user_signatures_full.select("minhashSignature").distinct().count())
-    user_signatures_full.groupBy("minhashSignature").count().orderBy(col("count").desc()).show(10)
-    user_signatures_full.select(size("movieSet").alias("numMovies")).summary().show()
+  #  print("=== Full Dataset Diagnostics ===")
+  #  user_signatures_full = generate_minhash_signatures(user_movies_full)
+  #  print("Number of users (full):", user_signatures_full.count())
+  #  print("Unique MinHash signatures (full):", user_signatures_full.select("minhashSignature").distinct().count())
+  #  user_signatures_full.groupBy("minhashSignature").count().orderBy(col("count").desc()).show(10)
+  #  user_signatures_full.select(size("movieSet").alias("numMovies")).summary().show()
 
     # --- FILTER users with <5 movies ---
     user_movies = user_movies_full.filter(size(col("movieSet")) >= 3)
@@ -169,10 +167,10 @@ def main():
     user_signatures = generate_minhash_signatures(user_movies)
 
     # --- Diagnostics AFTER filtering ---
-    print("Unique MinHash signatures (filtered):", user_signatures.select("minhashSignature").distinct().count())
-    user_signatures.groupBy("minhashSignature").count().orderBy(col("count").desc()).show(10)
-    user_signatures.select(size("movieSet").alias("numMovies")).summary().show()
-    user_signatures.select("userId", "movieSet", "minhashSignature").show(5, truncate=False)
+ #   print("Unique MinHash signatures (filtered):", user_signatures.select("minhashSignature").distinct().count())
+  #  user_signatures.groupBy("minhashSignature").count().orderBy(col("count").desc()).show(10)
+   # user_signatures.select(size("movieSet").alias("numMovies")).summary().show()
+   # user_signatures.select("userId", "movieSet", "minhashSignature").show(5, truncate=False)
 
     # --- Cluster Inspection: Top MinHash Signature ---
     top_sig = user_signatures.groupBy("minhashSignature") \
@@ -184,17 +182,9 @@ def main():
     sig_df = spark.createDataFrame([Row(minhashSignature=top_sig)])
     matching_users = user_signatures.join(sig_df, on="minhashSignature", how="inner")
 
-  #  print("=== Users with Most Frequent MinHash Signature ===")
- #   matching_users.select("userId", "movieSet").show(20, truncate=False)
-
     # Explode movie sets into individual movieIds
     exploded_movies = matching_users.select(explode(col("movieSet")).alias("movieId"))
 
-  #  print("=== Unique Movies Rated by This Cluster ===")
-  #  exploded_movies.distinct().orderBy("movieId").show(100, truncate=False)
-
- #   print("=== Most Frequently Rated Movies in the Cluster ===")
-  #  exploded_movies.groupBy("movieId").count().orderBy(col("count").desc()).show(20)
 
     # --- Apply LSH ---
     grouped_bands = apply_lsh(user_signatures)
@@ -206,8 +196,23 @@ def main():
 
     # --- Find Top 100 pairs ---
     top_100_pairs = find_top_100_pairs(grouped_bands)
-   # print("Top 100 user pairs by band collision count:")
-   # top_100_pairs.show(100, truncate=False)
+
+    # --- Add movie sets back to compute similarity ---
+    user1_movies = user_movies.selectExpr("userId as user1", "movieSet as movieSet1")
+    user2_movies = user_movies.selectExpr("userId as user2", "movieSet as movieSet2")
+
+# Join movie sets to top pairs
+    top_100_pairs_with_sets = top_100_pairs \
+        .join(user1_movies, on="user1") \
+        .join(user2_movies, on="user2")
+
+# Compute Jaccard similarity
+
+    top_100_final = top_100_pairs_with_sets.withColumn(
+        "jaccard_similarity",
+        size(array_intersect("movieSet1", "movieSet2")) / size(array_union("movieSet1", "movieSet2"))
+)
+    top_100_final.write.parquet("top_100_pairs_Jaccard.parquet", mode = "overwrite")
 
     # --- Save result ---
     print("saving to parquet")
