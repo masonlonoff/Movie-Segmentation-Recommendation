@@ -62,6 +62,7 @@ def main():
     print(f"Remaining movies: {filtered_movies} (Dropped {num_movies - filtered_movies})")
 
     # Now split and save the FILTERED data
+    print("saving file")
     split_and_save(filtered_ratings, output_dir)
 
     spark.stop()
