@@ -8,7 +8,7 @@ def start_spark():
 def main():
     spark = start_spark()
 
-    # Load full ratings data and top 100 pairs
+    # Load full ratings data and top pairs
     ratings = spark.read.parquet("ratings_full.parquet")
     top_pairs = spark.read.parquet("top_100_pairs_large-final.parquet")
 
@@ -84,7 +84,7 @@ def main():
     # Attach overlap to valid pairs
     valid_pairs_with_overlap = grouped_top_valid.join(overlap_counts, on=["user1", "user2"])
 
-    # Attach overlap to all top pairs (some will have nulls for missing join)
+    # Attach overlap to all top pairs
     all_pairs_with_overlap = top_pairs.join(overlap_counts, on=["user1", "user2"], how="left")
 
     # Find dropped pairs
@@ -113,27 +113,28 @@ def main():
             stddev("rating2").alias("stddev_user2")
         )
 
-# Show where stddev is null or zero (no variance = correlation undefined)
+    # Show where stddev is null or zero (no variance = correlation undefined)
     stddev_check.filter(
         (col("stddev_user1").isNull()) | (col("stddev_user2").isNull()) |
         (col("stddev_user1") == 0) | (col("stddev_user2") == 0)
     ).show()
 
-# Compute average rating per user (on shared movies only)
+    # Compute average rating per user (on shared movies only)
     avg_ratings = joined_dropped.groupBy("user1", "user2") \
         .agg(
             avg("rating1").alias("avg_rating_user1"),
             avg("rating2").alias("avg_rating_user2")
         )
 
-# Compute absolute difference in average ratings
+    # Compute absolute difference in average ratings
     avg_ratings = avg_ratings.withColumn(
         "rating_diff", abs(col("avg_rating_user1") - col("avg_rating_user2"))
     )
 
-# Show summary statistics for rating differences
+    # Show summary statistics for rating differences
     print("\n=== Average Rating Comparison for Dropped Pairs ===")
-# Show full average rating comparison for each dropped pair
+
+    # Show full average rating comparison for each dropped pair
     avg_ratings.select(
         "user1",
         "user2",

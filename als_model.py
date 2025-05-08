@@ -6,16 +6,10 @@ from pyspark.sql.functions import collect_list, col
 
 
 def start_spark():
-    # What: Start a Spark session
-    # Why: Required to use Spark APIs
-    # How: Use SparkSession.builder
     return SparkSession.builder.appName("ALSModelEval").getOrCreate()
 
 
 def load_data(spark, train_path, val_path, test_path):
-    # What: Load pre-split train/val/test data
-    # Why: Needed for training and evaluation
-    # How: Use Spark's read.parquet
     train_df = spark.read.parquet(train_path).cache()
     val_df = spark.read.parquet(val_path).cache()
     test_df = spark.read.parquet(test_path).cache()
@@ -23,10 +17,6 @@ def load_data(spark, train_path, val_path, test_path):
 
 
 def train_als_model(train_df, val_df, ranks, reg_params):
-    # What: Tune ALS model over hyperparameter grid
-    # Why: Identify best performing ALS model
-    # How: Use loop over ranks and regParams, evaluate on val set using NDCG
-
     best_model = None
     best_ndcg = -1
     best_rank = None
@@ -48,7 +38,6 @@ def train_als_model(train_df, val_df, ranks, reg_params):
 
             model = als.fit(train_df)
 
-            # Prepare predictions for RankingMetrics
             top_k_preds = model.recommendForAllUsers(100)
             preds = top_k_preds.select("userId", "recommendations.movieId")
 
@@ -70,9 +59,6 @@ def train_als_model(train_df, val_df, ranks, reg_params):
 
 
 def evaluate_model(model, test_df):
-    # What: Evaluate final ALS model
-    # Why: Report Precision, Recall, NDCG, MAP
-    # How: Use Spark's RankingMetrics
 
     top_k_preds = model.recommendForAllUsers(100)
     preds = top_k_preds.select("userId", "recommendations.movieId")
@@ -95,12 +81,10 @@ def main():
 
     train_df, val_df, test_df = load_data(spark, train_path, val_path, test_path)
 
-    # Hyperparameter tuning
     ranks = [20, 25, 30]
     reg_params = [0.04, 0.05, 0.06]
     best_model = train_als_model(train_df, val_df, ranks, reg_params)
 
-    # Final test evaluation
     evaluate_model(best_model, test_df)
 
     spark.stop()
