@@ -1,0 +1,25 @@
+Training ALS with rank=20, regParam=0.04
+/hadoop/yarn/nm-local-dir/usercache/ml9542_nyu_edu/appcache/application_1746590253996_0986/container_1746590253996_0986_01_000001/pyspark.zip/pyspark/sql/context.py:158: FutureWarning: Deprecated in 3.0.0. Use SparkSession.builder.getOrCreate() instead.
+Rank=20, RegParam=0.04, NDCG@100=0.0008
+Training ALS with rank=20, regParam=0.05
+/hadoop/yarn/nm-local-dir/usercache/ml9542_nyu_edu/appcache/application_1746590253996_0986/container_1746590253996_0986_01_000001/pyspark.zip/pyspark/sql/context.py:158: FutureWarning: Deprecated in 3.0.0. Use SparkSession.builder.getOrCreate() instead.
+Rank=20, RegParam=0.05, NDCG@100=0.0011
+Training ALS with rank=20, regParam=0.06
+Rank=20, RegParam=0.06, NDCG@100=0.0013
+Training ALS with rank=25, regParam=0.04
+Rank=25, RegParam=0.04, NDCG@100=0.0018
+Training ALS with rank=25, regParam=0.05
+Rank=25, RegParam=0.05, NDCG@100=0.0023
+Training ALS with rank=25, regParam=0.06
+Rank=25, RegParam=0.06, NDCG@100=0.0023
+Training ALS with rank=30, regParam=0.04
+Rank=30, RegParam=0.04, NDCG@100=0.0025
+Training ALS with rank=30, regParam=0.05
+Rank=30, RegParam=0.05, NDCG@100=0.0027
+Training ALS with rank=30, regParam=0.06
+Rank=30, RegParam=0.06, NDCG@100=0.0025
+Best ALS model - Rank: 30, RegParam: 0.05, NDCG@100: 0.0027
+Precision@100: 0.0004
+Recall@100: 0.0065
+NDCG@100: 0.0019
+MAP@100: 0.0002
