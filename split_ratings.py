@@ -8,7 +8,7 @@ def start_spark():
 def load_ratings(spark, parquet_path):
     return spark.read.parquet(parquet_path)
 
-# Filter sparse users/movies (optional)
+# Filter sparse users/movies
 def filter_sparse_users_movies(ratings, min_user_ratings=5, min_movie_ratings=5):
     movie_counts = ratings.groupBy("movieId").count().withColumnRenamed("count", "movie_rating_count") \
                           .filter(col("movie_rating_count") >= min_movie_ratings)
@@ -20,17 +20,13 @@ def filter_sparse_users_movies(ratings, min_user_ratings=5, min_movie_ratings=5)
     return ratings.select("userId", "movieId", "rating", "timestamp")
 
 def time_ordered_split(ratings, output_dir):
-    # Add row number per user ordered by timestamp
     window_spec = Window.partitionBy("userId").orderBy("timestamp")
     ratings_with_index = ratings.withColumn("row_num", row_number().over(window_spec))
 
-    # Count number of ratings per user
     user_counts = ratings_with_index.groupBy("userId").agg(count("*").alias("total"))
 
-    # Join to get total per user
     ratings_with_total = ratings_with_index.join(user_counts, on="userId")
 
-    # Compute thresholds
     train_frac = 0.6
     val_frac = 0.2
     ratings_split = ratings_with_total.withColumn(
@@ -42,7 +38,6 @@ def time_ordered_split(ratings, output_dir):
     val = ratings_split.filter((col("split") > train_frac) & (col("split") <= train_frac + val_frac)).drop("row_num", "total", "split")
     test = ratings_split.filter(col("split") > train_frac + val_frac).drop("row_num", "total", "split")
 
-    # Save
     train.write.mode("overwrite").parquet(f"{output_dir}/train_ratings.parquet")
     val.write.mode("overwrite").parquet(f"{output_dir}/val_ratings.parquet")
     test.write.mode("overwrite").parquet(f"{output_dir}/test_ratings.parquet")
@@ -75,7 +70,6 @@ def main():
     print(f"Remaining users: {filtered_users} (Dropped {num_users - filtered_users})", flush=True)
     print(f"Remaining movies: {filtered_movies} (Dropped {num_movies - filtered_movies})", flush=True)
 
-    # Split chronologically per user
     time_ordered_split(filtered_ratings, output_dir)
 
 
