@@ -1,0 +1,19 @@
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+Total ratings: 33832162
+Unique users: 330975, Unique movies: 83239
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+Filtered ratings: 33703135
+Dropped ratings: 129027
+Remaining users: 307371 (Dropped 23604)
+Remaining movies: 43873 (Dropped 39366)
+SCRIPT COMPLETED SUCCESSFULLY
