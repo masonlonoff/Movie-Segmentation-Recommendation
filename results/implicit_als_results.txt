@@ -1,0 +1,31 @@
+Training ALS (implicit) with rank=25, alpha = 1, regParam=0.125
+/hadoop/yarn/nm-local-dir/usercache/ml9542_nyu_edu/appcache/application_1746590253996_1146/container_1746590253996_1146_01_000002/pyspark.zip/pyspark/sql/context.py:158: FutureWarning: Deprecated in 3.0.0. Use SparkSession.builder.getOrCreate() instead.
+Rank=25, RegParam=0.125, alpha = 1, NDCG@100=0.1376
+Training ALS (implicit) with rank=25, alpha = 1, regParam=0.15
+/hadoop/yarn/nm-local-dir/usercache/ml9542_nyu_edu/appcache/application_1746590253996_1146/container_1746590253996_1146_01_000002/pyspark.zip/pyspark/sql/context.py:158: FutureWarning: Deprecated in 3.0.0. Use SparkSession.builder.getOrCreate() instead.
+Rank=25, RegParam=0.15, alpha = 1, NDCG@100=0.1377
+Training ALS (implicit) with rank=25, alpha = 5, regParam=0.125
+Rank=25, RegParam=0.125, alpha = 5, NDCG@100=0.1386
+Training ALS (implicit) with rank=25, alpha = 5, regParam=0.15
+Rank=25, RegParam=0.15, alpha = 5, NDCG@100=0.1386
+Training ALS (implicit) with rank=25, alpha = 10, regParam=0.125
+Rank=25, RegParam=0.125, alpha = 10, NDCG@100=0.1368
+Training ALS (implicit) with rank=25, alpha = 10, regParam=0.15
+Rank=25, RegParam=0.15, alpha = 10, NDCG@100=0.1377
+Training ALS (implicit) with rank=26, alpha = 1, regParam=0.125
+Rank=26, RegParam=0.125, alpha = 1, NDCG@100=0.1364
+Training ALS (implicit) with rank=26, alpha = 1, regParam=0.15
+Rank=26, RegParam=0.15, alpha = 1, NDCG@100=0.1358
+Training ALS (implicit) with rank=26, alpha = 5, regParam=0.125
+Rank=26, RegParam=0.125, alpha = 5, NDCG@100=0.1365
+Training ALS (implicit) with rank=26, alpha = 5, regParam=0.15
+Rank=26, RegParam=0.15, alpha = 5, NDCG@100=0.1364
+Training ALS (implicit) with rank=26, alpha = 10, regParam=0.125
+Rank=26, RegParam=0.125, alpha = 10, NDCG@100=0.1366
+Training ALS (implicit) with rank=26, alpha = 10, regParam=0.15
+Rank=26, RegParam=0.15, alpha = 10, NDCG@100=0.1364
+Best Implicit ALS - Rank: 25, RegParam: 0.15, alpha: 10, NDCG@100: 0.1386
+Precision@100: 0.0245
+Recall@100: 0.2616
+NDCG@100: 0.1023
+MAP@100: 0.0223
