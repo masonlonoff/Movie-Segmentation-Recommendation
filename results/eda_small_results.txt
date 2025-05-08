@@ -1,0 +1,168 @@
+===== Ratings Schema =====
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- rating: double (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+
+===== Ratings Sample =====
++------+-------+------+---------+
+|userId|movieId|rating|timestamp|
++------+-------+------+---------+
+|     1|      1|   4.0|964982703|
+|     1|      3|   4.0|964981247|
+|     1|      6|   4.0|964982224|
+|     1|     47|   5.0|964983815|
+|     1|     50|   5.0|964982931|
++------+-------+------+---------+
+only showing top 5 rows
+
+
+===== Ratings Count =====
+100836
+
+===== Movies Schema =====
+root
+ |-- movieId: integer (nullable = true)
+ |-- title: string (nullable = true)
+ |-- genres: string (nullable = true)
+
+
+===== Movies Sample =====
++-------+--------------------+--------------------+
+|movieId|               title|              genres|
++-------+--------------------+--------------------+
+|      1|    Toy Story (1995)|Adventure|Animati...|
+|      2|      Jumanji (1995)|Adventure|Childre...|
+|      3|Grumpier Old Men ...|      Comedy|Romance|
+|      4|Waiting to Exhale...|Comedy|Drama|Romance|
+|      5|Father of the Bri...|              Comedy|
++-------+--------------------+--------------------+
+only showing top 5 rows
+
+
+===== Movies Count =====
+9742
+
+===== Tags Schema =====
+root
+ |-- userId: integer (nullable = true)
+ |-- movieId: integer (nullable = true)
+ |-- tag: string (nullable = true)
+ |-- timestamp: integer (nullable = true)
+
+
+===== Tags Sample =====
++------+-------+---------------+----------+
+|userId|movieId|            tag| timestamp|
++------+-------+---------------+----------+
+|     2|  60756|          funny|1445714994|
+|     2|  60756|Highly quotable|1445714996|
+|     2|  60756|   will ferrell|1445714992|
+|     2|  89774|   Boxing story|1445715207|
+|     2|  89774|            MMA|1445715200|
++------+-------+---------------+----------+
+only showing top 5 rows
+
+
+===== Tags Count =====
+3683
+
+===== Links Schema =====
+root
+ |-- movieId: integer (nullable = true)
+ |-- imdbId: integer (nullable = true)
+ |-- tmdbId: integer (nullable = true)
+
+
+===== Links Sample =====
++-------+------+------+
+|movieId|imdbId|tmdbId|
++-------+------+------+
+|      1|114709|   862|
+|      2|113497|  8844|
+|      3|113228| 15602|
+|      4|114885| 31357|
+|      5|113041| 11862|
++-------+------+------+
+only showing top 5 rows
+
+
+===== Links Count =====
+9742
+
+===== Null check for Ratings =====
++------+-------+------+---------+
+|userId|movieId|rating|timestamp|
++------+-------+------+---------+
+|     0|      0|     0|        0|
++------+-------+------+---------+
+
+
+===== Null check for Movies =====
++-------+-----+------+
+|movieId|title|genres|
++-------+-----+------+
+|      0|    0|     0|
++-------+-----+------+
+
+
+===== Null check for Tags =====
++------+-------+---+---------+
+|userId|movieId|tag|timestamp|
++------+-------+---+---------+
+|     0|      0|  0|        0|
++------+-------+---+---------+
+
+
+===== Null check for Links =====
++-------+------+------+
+|movieId|imdbId|tmdbId|
++-------+------+------+
+|      0|     0|     8|
++-------+------+------+
+
+
+===== Ratings Distribution =====
++------+-----+
+|rating|count|
++------+-----+
+|   0.5| 1370|
+|   1.0| 2811|
+|   1.5| 1791|
+|   2.0| 7551|
+|   2.5| 5550|
+|   3.0|20047|
+|   3.5|13136|
+|   4.0|26818|
+|   4.5| 8551|
+|   5.0|13211|
++------+-----+
+
+
+===== Genre Distribution =====
++------------------+-----+
+|             genre|count|
++------------------+-----+
+|             Drama| 4361|
+|            Comedy| 3756|
+|          Thriller| 1894|
+|            Action| 1828|
+|           Romance| 1596|
+|         Adventure| 1263|
+|             Crime| 1199|
+|            Sci-Fi|  980|
+|            Horror|  978|
+|           Fantasy|  779|
+|          Children|  664|
+|         Animation|  611|
+|           Mystery|  573|
+|       Documentary|  440|
+|               War|  382|
+|           Musical|  334|
+|           Western|  167|
+|              IMAX|  158|
+|         Film-Noir|   87|
+|(no genres listed)|   34|
++------------------+-----+
