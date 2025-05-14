@@ -2,11 +2,7 @@
 # DSGA1004 - BIG DATA
 ## Capstone project
 
-*Handout date*: 2025-04-07
-
-*Checkpoint submission*: 2025-04-28
-
-*Project due date*: 2025-05-07
+This repository is for the Capstone Project for DS-GA 1004 - Big Data. 
 
 
 # Overview
@@ -99,14 +95,3 @@ Include a PDF of your final report through Brightspace.  Specifically, your fina
 - Evaluation of latent factor model
 
 Any additional software components that you use should be cited and documented with installation instructions.
-
-## Suggested Timeline
-
-It will be helpful to commit your work in progress to the repository.
-Toward this end, we recommend the following timeline to stay on track:
-
-- [ ] 2025/04/21: data pre-processing, implementing the minHash algorithm
-- [ ] **2025/04/28**: validation with correlations, checkpoint submission with similarity results.
-- [ ] 2025/05/05: train/validation partitioning, popularity baseline model.
-- [ ] 2025/05/12: Working latent factor model implementation. Then scale up to the full dataset in the remaining week until the final due date
-- [ ] 2025/05/14: final project submission.  **NO EXTENSIONS ARE POSSIBLE PAST THIS DATE.** [this is the last day of the semester, 05/15 is commencement]
