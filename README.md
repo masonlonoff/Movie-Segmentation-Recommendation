@@ -7,7 +7,7 @@ This repository is for the Capstone Project for DS-GA 1004 - Big Data.
 Below, please find the descriptions of each file in the repository: <br/>
 1. [eda_small.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/eda_small.py): This file consists of intial EDA done on the small dataset. I am checking for schema, counts, nulls, distributions, and samples of the datasets. <br/>
 2. [eda_large.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/eda_large.py): This file is the same as eda_small, but just for the large dataset. <br/>
-3. [minhash.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/minhash.py: This file uses minhash and LSH to generate the top 100 user movie pairs. <br/>
+3. [minhash.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/minhash.py): This file uses minhash and LSH to generate the top 100 user movie pairs. <br/>
 4. [top_100_pairs.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/top_100_check.py): This file simply compares the Jaccard similarity of the user pairs <br/>
 5. [validate_pairs.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/validate_pairs.py): This file performs full EDA and data validation on the top 100 pairs to ensure the previous script worked as intended. <br/>
 6. [ratings_check.py](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/ratings_check.py): This file simply examines the schema and dataset snippet of the full ratings dataset with the userID, movieId, rating, and timestamp. <br/>
