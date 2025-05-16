@@ -4,7 +4,7 @@
 
 This repository is for the Capstone Project for DS-GA 1004 - Big Data. 
 
-Below, please find the descriptions of each file in the repository:
+Below, please find the descriptions of each file in the repository: \n
 1.[eda_small](https://github.com/masonlonoff/Movie-Segmentation-Recommendation/blob/main/eda_small.py)
 
 
