@@ -30,7 +30,7 @@ def main():
     print("Train ∩ Test:", train_ids.intersect(test_ids).count(), flush=True)
     print("Val ∩ Test:", val_ids.intersect(test_ids).count(), flush=True)
 
-    # Optional: verify temporal order
+    # Verify temporal order
     print("Timestamp ranges:", flush=True)
     for name, df in [("Train", train), ("Val", val), ("Test", test)]:
         min_ts = df.agg(min("timestamp")).first()[0]
